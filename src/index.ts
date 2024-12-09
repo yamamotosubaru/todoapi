@@ -21,7 +21,7 @@ class Todo {
 const todos: Todo[] = []
 
 
-
+// post
 app.post('/post', async (req: Request, res: Response) => {
   try {
     const { title, content } = req.body;
@@ -49,6 +49,7 @@ app.post('/post', async (req: Request, res: Response) => {
   }
 });
 
+// get
 app.get('/post', async (req: Request, res: Response) => {
   const [result] = await pool.query(
     `SELECT * FROM todos`
@@ -58,19 +59,19 @@ app.get('/post', async (req: Request, res: Response) => {
   })
 });
 
-app.get('/search', (req: Request, res: Response) => {
-  var word: string = req.query.word as string;
-  const results: Todo[] = todos.filter(x =>
-    x.title.includes(word) ||
-    x.content.includes(word));
-  // const results: Todo[] = [];
-  // for (var i = 0; i < todos.length; i++) {
-  //   if (todos[i].title.includes(word)) {
-  //     results.push(todos[i])
-  //   }
-  // }
-  res.send({ "todos": results })
-})
+// search
+app.get('/search', async (req: Request, res: Response) => {
+  const word: string = req.query.word as string;
+  const searchPattern = `%${word}%`;
+  const [results] = await pool.query(
+    `SELECT * FROM todos WHERE title LIKE ? OR content LIKE ?`,
+    [searchPattern, searchPattern]
+    // ["%" + word + "%", "%" + word + "%"]
+  );
+  res.send({
+    "todos": results
+  });
+});
 
 app.listen(port, () => {
   console.log(`Server running at ${port}`);
