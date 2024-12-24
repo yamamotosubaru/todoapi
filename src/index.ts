@@ -73,6 +73,26 @@ app.get('/search', async (req: Request, res: Response) => {
   });
 });
 
+// delete
+app.delete('/post/:id', async (req: Request, res: Response) => {
+  const todoId = req.params.id;
+  await pool.query(
+    `DELETE FROM todos WHERE id = ?`,
+    [todoId]
+  )
+  res.status(200).send({})
+});
+
+// delete2
+app.post('/post/delete', async (req: Request, res: Response) => {
+  const { todoId } = req.body;
+  await pool.query(
+    `DELETE FROM todos WHERE id = ?`,
+    [todoId]
+  )
+  res.status(200).send({})
+});
+
 app.listen(port, () => {
   console.log(`Server running at ${port}`);
 });
