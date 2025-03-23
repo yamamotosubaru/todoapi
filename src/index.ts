@@ -8,11 +8,18 @@ const port = 3000;
 app.use(express.json());
 
 const pool = mysql.createPool({
-  host: 'db',
-  user: 'root',
-  password: 'password',
-  database: 'todo_db'
+  host: process.env.DB_HOST || 'db',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'password',
+  database: process.env.DB_NAME || 'todo_db'
 });
+
+// const pool = mysql.createPool({
+//   host: 'db',
+//   user: 'root',
+//   password: 'password',
+//   database: 'todo_db'
+// });
 
 class Todo {
   constructor(public readonly title: string, public readonly content: string, public readonly check: boolean = false) { }
@@ -92,6 +99,23 @@ app.post('/post/delete', async (req: Request, res: Response) => {
   )
   res.status(200).send({})
 });
+
+// AIからの追加
+// エラーハンドリングを追加
+app.use((err: any, req: Request, res: Response, next: any) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
+// データベースの接続確認を追加
+pool.getConnection()
+  .then(connection => {
+    console.log('Database connected successfully');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('Error connecting to the database:', err);
+  });
 
 app.listen(port, () => {
   console.log(`Server running at ${port}`);
