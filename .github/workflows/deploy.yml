@@ -5,9 +5,27 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Test GitHub Actions
-        run: echo "GitHub Actions is working!"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com
+          IMAGE_NAME: todo-demo
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
