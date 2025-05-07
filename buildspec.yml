@@ -4,8 +4,10 @@ phases:
     commands:
       - echo Logging in to Docker Hub...
       - echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
+      - docker info
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - docker info
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
   build:
