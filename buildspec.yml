@@ -10,7 +10,6 @@ phases:
       - docker info
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      # 最新のタスク定義を取得
       - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition todo-taskdef --region $AWS_DEFAULT_REGION)
       - echo "Retrieved latest task definition for todo-taskdef"
   build:
@@ -26,19 +25,15 @@ phases:
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - docker push $REPOSITORY_URI:latest
       
-      # 最新のタスク定義からtaskdef.jsonを作成
       - echo $TASK_DEFINITION | jq '.taskDefinition' > taskdef.json
       
-      # イメージ置換用のプレースホルダーを設定
       - CONTAINER_NAME=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.containerDefinitions[0].name')
-      - echo "Container name: $CONTAINER_NAME"
+      - echo "Container name:" $CONTAINER_NAME
       - jq --arg CONTAINER "$CONTAINER_NAME" --arg URI "$REPOSITORY_URI:$IMAGE_TAG" '.containerDefinitions[0].name = $CONTAINER | .containerDefinitions[0].image = "<IMAGE1_NAME>"' taskdef.json > taskdef_new.json
       - mv taskdef_new.json taskdef.json
       
-      # imageDefinitions.jsonを作成
       - echo '[{"name":"'$CONTAINER_NAME'","imageUri":"'$REPOSITORY_URI:$IMAGE_TAG'"}]' > imageDefinitions.json
       
-      # 生成したファイルを確認
       - echo "Generated imageDefinitions.json:"
       - cat imageDefinitions.json
       - echo "Generated taskdef.json (truncated):"
