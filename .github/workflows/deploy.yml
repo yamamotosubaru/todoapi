@@ -98,12 +98,20 @@ jobs:
           # Execute deployment via Session Manager - Step 2: Run deployment
           echo "Executing deployment script..."
           
-          # Encode script as base64 and decode on the instance
-          SCRIPT_B64=$(cat deploy_script.sh | base64 -w 0)
+          # Execute commands individually to avoid parameter length issues
           COMMAND_ID_2=$(aws ssm send-command \
             --instance-ids "$EC2_INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="echo '$SCRIPT_B64' | base64 -d | bash" \
+            --parameters 'commands=[
+              "echo Starting deployment...",
+              "aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com",
+              "docker pull 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com/todo-demo:latest",
+              "docker stop todo-app || true",
+              "docker rm todo-app || true",
+              "docker run -d --name todo-app -p 3000:3000 --restart unless-stopped --env-file /tmp/app.env 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com/todo-demo:latest",
+              "docker image prune -f",
+              "echo Deployment completed successfully"
+            ]' \
             --region ap-northeast-1 \
             --output text \
             --query 'Command.CommandId')
