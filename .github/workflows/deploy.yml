@@ -97,10 +97,13 @@ jobs:
           
           # Execute deployment via Session Manager - Step 2: Run deployment
           echo "Executing deployment script..."
+          
+          # Encode script as base64 and decode on the instance
+          SCRIPT_B64=$(cat deploy_script.sh | base64 -w 0)
           COMMAND_ID_2=$(aws ssm send-command \
             --instance-ids "$EC2_INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="$(cat deploy_script.sh)" \
+            --parameters commands="echo '$SCRIPT_B64' | base64 -d | bash" \
             --region ap-northeast-1 \
             --output text \
             --query 'Command.CommandId')
