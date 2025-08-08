@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import { todo } from 'node:test';
 import mysql from 'mysql2/promise';
 
 const app = express();
@@ -14,55 +13,44 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'todo_db'
 });
 
-// const pool = mysql.createPool({
-//   host: 'db',
-//   user: 'root',
-//   password: 'password',
-//   database: 'todo_db'
-// });
-
-class Todo {
-  constructor(public readonly title: string, public readonly content: string, public readonly check: boolean = false) { }
-}
-
-const todos: Todo[] = []
-
+const TodoStatus = {
+  Todo: "TODO",
+  Done: "DONE",
+  In_progress: "IN_PROGRESS",
+} as const;
 
 // post
 app.post('/post', async (req: Request, res: Response) => {
-  try {
-    const { title, content } = req.body;
-    const now = new Date();
+  const { title, content } = req.body;
+  const now = new Date();
 
-    const [result] = await pool.query<mysql.ResultSetHeader>(
-      `INSERT INTO todos (title, content, updated_at)
-       VALUES (?, ?, CURRENT_TIMESTAMP(3))`,
-      [title, content]
-    );
+  const [result] = await pool.query<mysql.ResultSetHeader>(
+    `INSERT INTO todos (title, content, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP(3))`,
+    [title, content]
+  );
 
-    const todo = {
-      id: result.insertId,
-      title,
-      content,
-      status: 'TODO' as const,
-      created_at: now,
-      updated_at: now
-    };
+  const todo = {
+    id: result.insertId,
+    title,
+    content,
+    status: TodoStatus.Todo,
+    created_at: now,
+    updated_at: now
+  };
 
-    res.status(201).send({ "todo": todo });
-  } catch (error) {
-    console.error('Error creating todo:', error);
-    res.status(500).send({ error: 'Database error' });
-  }
+  res.status(201).send({ "todo": todo });
 });
 
 // get
 app.get('/post', async (req: Request, res: Response) => {
   const [result] = await pool.query(
-    `SELECT * FROM todos`
+    `SELECT id, title, content, status, created_at, updated_at 
+    FROM todos 
+    ORDER BY created_at DESC`
   );
   res.send({
-    "todos": result
+    "todos": result // 修正した
   })
 });
 
@@ -71,13 +59,40 @@ app.get('/search', async (req: Request, res: Response) => {
   const word: string = req.query.word as string;
   const searchPattern = `%${word}%`;
   const [results] = await pool.query(
-    `SELECT * FROM todos WHERE title LIKE ? OR content LIKE ?`,
+    `SELECT id, title, content, status, created_at, updated_at 
+    FROM todos 
+    WHERE title LIKE ? OR content LIKE ?
+    ORDER BY created_at DESC`,
     [searchPattern, searchPattern]
     // ["%" + word + "%", "%" + word + "%"]
   );
   res.send({
-    "todos": results
+    "todos": results // 修正した
   });
+});
+
+// update
+app.put('/post/:id', async (req: Request, res: Response) => {
+  const todoId = req.params.id;
+  const { title, content, status } = req.body;
+
+  const [result] = await pool.query<mysql.ResultSetHeader>(
+    `UPDATE todos SET title = ?, content = ?, status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`,
+    [title, content, status || TodoStatus.Todo, todoId]
+  );
+
+  if (result.affectedRows === 0) {
+    return res.status(404).send({ error: 'Todo not found' });
+  }
+
+  const [updatedTodo] = await pool.query(
+    `SELECT id, title, content, status, created_at, updated_at 
+    FROM todos 
+    WHERE id = ?`,
+    [todoId]
+  );
+
+  res.status(200).send({ todo: (updatedTodo as any[])[0] });
 });
 
 // delete
@@ -90,34 +105,6 @@ app.delete('/post/:id', async (req: Request, res: Response) => {
   res.status(200).send({})
 });
 
-// delete2
-app.post('/post/delete', async (req: Request, res: Response) => {
-  const { todoId } = req.body;
-  await pool.query(
-    `DELETE FROM todos WHERE id = ?`,
-    [todoId]
-  )
-  res.status(200).send({})
-});
-
-// AIからの追加
-// エラーハンドリングを追加
-app.use((err: any, req: Request, res: Response, next: any) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
-
-// データベースの接続確認を追加
-pool.getConnection()
-  .then(connection => {
-    console.log('Database connected successfully');
-    connection.release();
-  })
-  .catch(err => {
-    console.error('Error connecting to the database:', err);
-  });
-
 app.listen(port, () => {
   console.log(`Server running at ${port}`);
 });
-
