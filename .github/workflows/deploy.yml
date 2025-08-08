@@ -21,14 +21,21 @@ jobs:
         run: |
           aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com
 
+      - name: Get git commit hash
+        id: vars
+        run: echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         env:
           ECR_REGISTRY: 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com
           IMAGE_NAME: todo-demo
-          IMAGE_TAG: latest
+          COMMIT_HASH: ${{ steps.vars.outputs.COMMIT_HASH }}
         run: |
-          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          # Build and tag with commit hash and latest
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$COMMIT_HASH -t $ECR_REGISTRY/$IMAGE_NAME:latest .
+          # Push both tags
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$COMMIT_HASH
+          docker push $ECR_REGISTRY/$IMAGE_NAME:latest
 
       - name: Deploy to EC2 via Session Manager
         env:
@@ -39,7 +46,7 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           ECR_REGISTRY: 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com
           IMAGE_NAME: todo-demo
-          IMAGE_TAG: latest
+          COMMIT_HASH: ${{ steps.vars.outputs.COMMIT_HASH }}
         run: |
           # Create deployment script
           cat > deploy_script.sh << 'EOF'
@@ -102,16 +109,16 @@ jobs:
           COMMAND_ID_2=$(aws ssm send-command \
             --instance-ids "$EC2_INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=[
-              "echo Starting deployment...",
-              "aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com",
-              "docker pull 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com/todo-demo:latest",
-              "docker stop todo-app || true",
-              "docker rm todo-app || true",
-              "docker run -d --name todo-app -p 3000:3000 --restart unless-stopped --env-file /tmp/app.env 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com/todo-demo:latest",
-              "docker image prune -f",
-              "echo Deployment completed successfully"
-            ]' \
+            --parameters "commands=[
+              \"echo Starting deployment with commit hash: $COMMIT_HASH\",
+              \"aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com\",
+              \"docker pull 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com/todo-demo:$COMMIT_HASH\",
+              \"docker stop todo-app || true\",
+              \"docker rm todo-app || true\",
+              \"docker run -d --name todo-app -p 3000:3000 --restart unless-stopped --env-file /tmp/app.env 216989110067.dkr.ecr.ap-northeast-1.amazonaws.com/todo-demo:$COMMIT_HASH\",
+              \"docker image prune -f\",
+              \"echo Deployment completed successfully for commit: $COMMIT_HASH\"
+            ]" \
             --region ap-northeast-1 \
             --output text \
             --query 'Command.CommandId')
