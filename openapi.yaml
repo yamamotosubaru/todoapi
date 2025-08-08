@@ -12,7 +12,7 @@ servers:
     description: Development server
 
 paths:
-  /post:
+  /todo:
     post:
       summary: TODO作成
       description: 新しいTODOを作成します
@@ -128,7 +128,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /post/{id}:
+  /todo/{id}:
     put:
       summary: TODO更新
       description: 指定したIDのTODOを更新します

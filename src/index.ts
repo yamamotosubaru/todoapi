@@ -20,7 +20,7 @@ const TodoStatus = {
 } as const;
 
 // post
-app.post('/post', async (req: Request, res: Response) => {
+app.post('/todo', async (req: Request, res: Response) => {
   const { title, content } = req.body;
   const now = new Date();
 
@@ -43,7 +43,7 @@ app.post('/post', async (req: Request, res: Response) => {
 });
 
 // get
-app.get('/post', async (req: Request, res: Response) => {
+app.get('/todo', async (req: Request, res: Response) => {
   const [result] = await pool.query(
     `SELECT id, title, content, status, created_at, updated_at 
     FROM todos 
@@ -72,7 +72,7 @@ app.get('/search', async (req: Request, res: Response) => {
 });
 
 // update
-app.put('/post/:id', async (req: Request, res: Response) => {
+app.put('/todo/:id', async (req: Request, res: Response) => {
   const todoId = req.params.id;
   const { title, content, status } = req.body;
 
@@ -96,7 +96,7 @@ app.put('/post/:id', async (req: Request, res: Response) => {
 });
 
 // delete
-app.delete('/post/:id', async (req: Request, res: Response) => {
+app.delete('/todo/:id', async (req: Request, res: Response) => {
   const todoId = req.params.id;
   await pool.query(
     `DELETE FROM todos WHERE id = ?`,
