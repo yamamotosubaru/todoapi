@@ -50,7 +50,7 @@ app.get('/todo', async (req: Request, res: Response) => {
     ORDER BY created_at DESC`
   );
   res.send({
-    "todos": result // 修正した
+    "todos": result
   })
 });
 
@@ -67,7 +67,7 @@ app.get('/search', async (req: Request, res: Response) => {
     // ["%" + word + "%", "%" + word + "%"]
   );
   res.send({
-    "todos": results // 修正した
+    "todos": results
   });
 });
 
